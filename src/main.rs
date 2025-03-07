@@ -1,7 +1,9 @@
+use crate::map::Map;
+
 mod map;
 
 fn main() {
     println!("Hello, world!");
-    let map = map::Map::new(100, 100, 0);
+    let map = Map::new(20, 10, 50);
     map.display();
 }
