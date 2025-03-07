@@ -1,0 +1,9 @@
+[package]
+name = "space_exploration_sim"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+noise = "0.7.0"
+rand = "0.8.5"
+bevy = "0.12"
