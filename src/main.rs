@@ -3,11 +3,10 @@ use noise::{NoiseFn, Perlin, Seedable};
 use rand::Rng;
 
 const TILE_SIZE: f32 = 4.0;
-const WIDTH: usize = 370;  // Nouvelle largeur de la carte
-const HEIGHT: usize = 190; // Nouvelle hauteur de la carte
-const MINERAL_SIZE: f32 = TILE_SIZE * 10.0; // Taille du sprite en pixels (40.0)
-                                           // Correspond à 10 tuiles (40/4)
-const RESOURCE_HALF_TILES: usize = (MINERAL_SIZE / TILE_SIZE / 2.0) as usize; // 10/2 = 5
+const WIDTH: usize = 370;
+const HEIGHT: usize = 190;
+const MINERAL_SIZE: f32 = TILE_SIZE * 10.0;
+const RESOURCE_HALF_TILES: usize = (MINERAL_SIZE / TILE_SIZE / 2.0) as usize;
 
 #[derive(Component)]
 struct Tile;
@@ -28,7 +27,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         ..Default::default()
     });
 
-    let seed = 14;
+    let seed = 42;
     let perlin = Perlin::new().set_seed(seed);
     let mut rng = rand::thread_rng();
 
@@ -64,7 +63,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     for y in 0..HEIGHT {
         for x in 0..WIDTH {
             if tile_map[y][x] == desert_handle {
-                let value = perlin.get([x as f64 / 8.0, y as f64 / 8.0]);
+                let value = perlin.get([x as f64 / 16.0, y as f64 / 16.0]);
                 if value > 0.60 {
                     tile_map[y][x] = science_handle.clone();
                 }
@@ -97,19 +96,13 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         }
     }
 
-    // Pour éviter les chevauchements entre ressources, on stocke les positions déjà placées.
-    // Chaque ressource est un carré de 10 tuiles de côté (MINERAL_SIZE/TILE_SIZE).
-    // Deux ressources ne doivent pas être placées si leur différence en x ET en y est inférieure à 10.
     let mut placed_positions: Vec<(usize, usize)> = Vec::new();
 
-    // Placer 150 minerais (le taux a été divisé par 2)
     let mut placed_minerals = 0;
     while placed_minerals < 150 {
-        // Génération dans une plage qui garantit que le sprite (de 10 tuiles de côté) reste dans la carte.
         let candidate_x = rng.gen_range(RESOURCE_HALF_TILES..(WIDTH - RESOURCE_HALF_TILES));
         let candidate_y = rng.gen_range(RESOURCE_HALF_TILES..(HEIGHT - RESOURCE_HALF_TILES));
 
-        // Vérification que le sprite ne chevauche pas un obstacle
         let mut overlaps_obstacle = false;
         for j in (candidate_y - RESOURCE_HALF_TILES)..(candidate_y + RESOURCE_HALF_TILES) {
             for i in (candidate_x - RESOURCE_HALF_TILES)..(candidate_x + RESOURCE_HALF_TILES) {
@@ -126,8 +119,6 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             continue;
         }
 
-        // Vérification qu'il n'y a pas déjà une ressource à proximité.
-        // On considère qu'il y a chevauchement si la différence en x ET en y est inférieure à 10 tuiles.
         let mut overlaps_resource = false;
         for &(px, py) in &placed_positions {
             if (candidate_x as isize - px as isize).abs() < 10
@@ -141,7 +132,6 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             continue;
         }
 
-        // Tout est OK, on peut placer le minerai
         commands.spawn((
             ResourcePoint,
             SpriteBundle {
@@ -162,13 +152,11 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         placed_minerals += 1;
     }
 
-    // Placer 50 énergies (taux divisé par 2)
     let mut placed_energy = 0;
     while placed_energy < 50 {
         let candidate_x = rng.gen_range(RESOURCE_HALF_TILES..(WIDTH - RESOURCE_HALF_TILES));
         let candidate_y = rng.gen_range(RESOURCE_HALF_TILES..(HEIGHT - RESOURCE_HALF_TILES));
 
-        // Vérification que le sprite ne chevauche pas un obstacle
         let mut overlaps_obstacle = false;
         for j in (candidate_y - RESOURCE_HALF_TILES)..(candidate_y + RESOURCE_HALF_TILES) {
             for i in (candidate_x - RESOURCE_HALF_TILES)..(candidate_x + RESOURCE_HALF_TILES) {
@@ -185,7 +173,6 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             continue;
         }
 
-        // Vérification qu'il n'y a pas déjà une ressource à proximité.
         let mut overlaps_resource = false;
         for &(px, py) in &placed_positions {
             if (candidate_x as isize - px as isize).abs() < 10
@@ -199,7 +186,6 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             continue;
         }
 
-        // Placement de l'énergie
         commands.spawn((
             ResourcePoint,
             SpriteBundle {
