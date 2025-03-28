@@ -1,5 +1,8 @@
-mod map;
+mod simulation;
+use simulation::map::Map;
 
 fn main() {
-    println!("Hello, world!");
+    println!("starting ...");
+    let map = Map::new(20, 42);
+    map.display();
 }
