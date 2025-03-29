@@ -11,8 +11,8 @@ use std::{error::Error, io};
 
 fn main() -> Result<(), Box<dyn Error>> {
     enable_raw_mode()?;
-    let mut stdout = io::stdout();
-    let backend = CrosstermBackend::new(&mut stdout);
+    let stdout = io::stdout();
+    let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
     let mut app = app::App::new();

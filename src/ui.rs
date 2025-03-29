@@ -1,7 +1,7 @@
 use ratatui::{
     layout::{Constraint, Direction, Layout},
-    style::{Color, Style},
-    text::Span,
+    style::{Color, Style}
+    ,
     widgets::{Block, Borders, Paragraph},
     Frame,
 };
@@ -9,7 +9,7 @@ use ratatui::{
 use crate::app::App;
 use crate::map::Tile;
 
-pub fn render<B: ratatui::backend::Backend>(f: &mut Frame, app: &App) {
+pub fn render(f: &mut Frame, app: &App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(1)
