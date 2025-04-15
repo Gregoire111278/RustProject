@@ -1,5 +1,4 @@
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use noise::{NoiseFn, Perlin};
 
 #[derive(Clone, Copy)]
 pub enum Tile {
@@ -17,18 +16,25 @@ pub struct Map {
 
 impl Map {
     pub fn generate(rows: usize, cols: usize, seed: u64) -> Self {
-        let mut rng = StdRng::seed_from_u64(seed);
+        let perlin = Perlin::default();
         let mut grid = vec![vec![Tile::Empty; cols]; rows];
 
         for row in 0..rows {
             for col in 0..cols {
-                let roll = rng.random_range(0..100);
-                grid[row][col] = match roll {
-                    0..=5 => Tile::Obstacle,
-                    6..=8 => Tile::Energy,
-                    9..=11 => Tile::Mineral,
-                    12..=13 => Tile::Science,
-                    _ => Tile::Empty,
+                let x = row as f64 / 10.0;
+                let y = col as f64 / 10.0;
+                let val = perlin.get([x, y, seed as f64]);
+
+                grid[row][col] = if val > 0.6 {
+                    Tile::Obstacle
+                } else if val > 0.4 {
+                    Tile::Mineral
+                } else if val > 0.2 {
+                    Tile::Energy
+                } else if val > 0.1 {
+                    Tile::Science
+                } else {
+                    Tile::Empty
                 };
             }
         }
