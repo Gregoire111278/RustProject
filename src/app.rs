@@ -1,5 +1,6 @@
 use crate::map::Map;
 use crate::robot::Robot;
+use crate::robot::RobotModule;
 
 pub struct App {
     pub map: Map,
@@ -10,7 +11,9 @@ pub struct App {
 impl App {
     pub fn new() -> Self {
         let map = Map::generate_with_dynamic_seed(25, 26);
-        let robots = vec![Robot::new(1, (0, 0))];
+        let robots = vec![
+            Robot::new(1, (0, 0), vec![RobotModule::Explorer, RobotModule::Collector]),
+        ];
         Self {
             map,
             robots,

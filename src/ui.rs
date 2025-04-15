@@ -64,8 +64,17 @@ pub fn render(f: &mut Frame, app: &App) {
         .robots
         .iter()
         .map(|r| {
+            let modules = r
+                .modules
+                .iter()
+                .map(|m| format!("{:?}", m))
+                .collect::<Vec<_>>()
+                .join(", ");
             ListItem::new(Line::from(vec![Span::styled(
-                format!("Robot #{} at ({}, {})", r.id, r.position.0, r.position.1),
+                format!(
+                    "Robot #{} at ({}, {}) [{}]",
+                    r.id, r.position.0, r.position.1, modules
+                ),
                 Style::default().fg(Color::Cyan),
             )]))
         })
@@ -77,7 +86,7 @@ pub fn render(f: &mut Frame, app: &App) {
 
     let right_chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(3), Constraint::Min(3)])
+        .constraints([Constraint::Length(5), Constraint::Min(3)])
         .split(chunks[1]);
 
     f.render_widget(robot_panel, right_chunks[0]);
