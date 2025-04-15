@@ -8,6 +8,8 @@ use ratatui::{
 
 use crate::app::App;
 use crate::map::Tile;
+use std::thread;
+use std::time::Duration;
 
 pub fn render(f: &mut Frame, app: &App) {
     let chunks = Layout::default()
@@ -29,18 +31,18 @@ pub fn render(f: &mut Frame, app: &App) {
                     let (symbol, style) =
                         if app.robots.iter().any(|r| r.position == (row_idx, col_idx)) {
                             (
-                                "🤖 ",
+                                " 🤖 ",
                                 Style::default()
                                     .fg(Color::Cyan)
                                     .add_modifier(Modifier::BOLD),
                             )
                         } else {
                             match tile {
-                                Tile::Empty => (" . ", Style::default().fg(Color::DarkGray)),
+                                Tile::Empty => (" · ", Style::default().fg(Color::DarkGray)),
                                 Tile::Obstacle => (" # ", Style::default().fg(Color::Red)),
-                                Tile::Energy => ("⚡ ", Style::default().fg(Color::Yellow)),
-                                Tile::Mineral => ("⛏ ", Style::default().fg(Color::Blue)),
-                                Tile::Science => ("🔬 ", Style::default().fg(Color::Green)),
+                                Tile::Energy => (" E ", Style::default().fg(Color::Yellow)),
+                                Tile::Mineral => (" M ", Style::default().fg(Color::Blue)),
+                                Tile::Science => (" S ", Style::default().fg(Color::Green)),
                             }
                         };
 
@@ -86,4 +88,6 @@ pub fn render(f: &mut Frame, app: &App) {
     .block(Block::default().title("Status").borders(Borders::ALL));
 
     f.render_widget(status, status_chunks[1]);
+
+    thread::sleep(Duration::from_millis(150));
 }
