@@ -9,7 +9,7 @@ pub struct App {
 
 impl App {
     pub fn new() -> Self {
-        let map = Map::generate_with_dynamic_seed(20, 30);
+        let map = Map::generate_with_dynamic_seed(25, 26);
         let robots = vec![Robot::new(1, (0, 0))];
         Self {
             map,
@@ -25,6 +25,6 @@ impl App {
             robot.move_right(self.map.grid.len(), self.map.cols);
         }
 
-        self.tick_count > 100
+        self.tick_count > 40
     }
 }

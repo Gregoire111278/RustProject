@@ -71,10 +71,16 @@ pub fn render(f: &mut Frame, app: &App) {
         })
         .collect();
 
-    let robot_panel =
-        List::new(robot_info).block(Block::default().title("Robots Info").borders(Borders::ALL));
+    let robot_panel = List::new(robot_info)
+        .block(Block::default().title("Robots Info").borders(Borders::ALL))
+        .style(Style::default().fg(Color::Cyan));
 
-    f.render_widget(robot_panel, chunks[1]);
+    let right_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(3), Constraint::Min(3)])
+        .split(chunks[1]);
+
+    f.render_widget(robot_panel, right_chunks[0]);
 
     let status_chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -90,4 +96,16 @@ pub fn render(f: &mut Frame, app: &App) {
     f.render_widget(status, status_chunks[1]);
 
     thread::sleep(Duration::from_millis(150));
+
+    let legend_lines = vec![
+        Line::from(" 🤖  - Robot"),
+        Line::from(" #  - Obstacle"),
+        Line::from(" E  - Energy"),
+        Line::from(" M  - Mineral"),
+        Line::from(" S  - Science"),
+        Line::from(" ·  - Empty"),
+    ];
+    let legend =
+        Paragraph::new(legend_lines).block(Block::default().title("Legend").borders(Borders::ALL));
+    f.render_widget(legend, right_chunks[1]);
 }
