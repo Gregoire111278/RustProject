@@ -12,7 +12,6 @@ pub enum Tile {
 
 pub struct Map {
     pub grid: Vec<Vec<Tile>>,
-    pub rows: usize,
     pub cols: usize,
 }
 
@@ -23,7 +22,7 @@ impl Map {
 
         for row in 0..rows {
             for col in 0..cols {
-                let roll = rng.gen_range(0..100);
+                let roll = rng.random_range(0..100);
                 grid[row][col] = match roll {
                     0..=5 => Tile::Obstacle,
                     6..=8 => Tile::Energy,
@@ -34,6 +33,6 @@ impl Map {
             }
         }
 
-        Self { grid, rows, cols }
+        Self { grid, cols }
     }
 }

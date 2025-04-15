@@ -20,6 +20,14 @@ impl App {
 
     pub fn tick(&mut self) -> bool {
         self.tick_count += 1;
+
+        for robot in &mut self.robots {
+            let (row, col) = robot.position;
+            if col + 1 < self.map.cols {
+                robot.position = (row, col + 1);
+            }
+        }
+
         self.tick_count > 100
     }
 }
