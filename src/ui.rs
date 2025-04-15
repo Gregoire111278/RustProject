@@ -54,7 +54,7 @@ pub fn render(f: &mut Frame, app: &App) {
         .collect();
 
     let map_widget = Table::default()
-        .block(Block::default().title("Planet Map").borders(Borders::ALL))
+        .block(Block::default().title("PlanetMap").borders(Borders::ALL))
         .widths(&vec![Constraint::Length(3); app.map.cols])
         .rows(map_grid);
 
