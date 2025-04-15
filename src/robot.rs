@@ -14,6 +14,8 @@ pub struct Robot {
     pub id: usize,
     pub position: (usize, usize),
     pub modules: Vec<RobotModule>,
+    pub energy_collected: u32,
+    pub mineral_collected: u32,
 }
 
 impl Robot {
@@ -22,6 +24,8 @@ impl Robot {
             id,
             position,
             modules,
+            energy_collected: 0,
+            mineral_collected: 0,
         }
     }
 

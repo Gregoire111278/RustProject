@@ -72,8 +72,13 @@ pub fn render(f: &mut Frame, app: &App) {
                 .join(", ");
             ListItem::new(Line::from(vec![Span::styled(
                 format!(
-                    "Robot #{} at ({}, {}) [{}]",
-                    r.id, r.position.0, r.position.1, modules
+                    "Robot #{} at ({}, {}) [{}] | Energy: {} | Mineral: {}",
+                    r.id,
+                    r.position.0,
+                    r.position.1,
+                    modules,
+                    r.energy_collected,
+                    r.mineral_collected
                 ),
                 Style::default().fg(Color::Cyan),
             )]))
@@ -97,7 +102,13 @@ pub fn render(f: &mut Frame, app: &App) {
         .split(f.size());
 
     let status = Paragraph::new(Line::from(vec![Span::styled(
-        format!("Tick: {} | Robots: {}", app.tick_count, app.robots.len()),
+        format!(
+            "Tick: {} | Robots: {} | Energy: {} | Mineral: {}",
+            app.tick_count,
+            app.robots.len(),
+            app.collected_energy,
+            app.collected_mineral
+        ),
         Style::default().fg(Color::White),
     )]))
     .block(Block::default().title("Status").borders(Borders::ALL));
