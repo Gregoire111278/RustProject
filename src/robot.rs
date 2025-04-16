@@ -3,11 +3,6 @@ pub enum RobotModule {
     Explorer,
     Collector,
     Scanner,
-    // Scientist,
-    // Battery,
-    // Drill,
-    // CommModule,
-    // Builder,
 }
 
 #[derive(Debug)]
@@ -48,10 +43,39 @@ impl Robot {
         }
     }
 
-    pub fn move_right(&mut self, map_rows: usize, map_cols: usize) {
-        let (row, col) = self.position;
-        if row < map_rows && col + 1 < map_cols {
-            self.position = (row, col + 1);
+    pub fn smart_move(&mut self, map: &crate::map::Map) {
+        let directions = [
+            (0, 1),          // right
+            (1, 0),          // down
+            (0, usize::MAX), // left
+            (usize::MAX, 0), // up
+        ];
+
+        let mut preferred_move = None;
+        let mut fallback_move = None;
+
+        for &(dr, dc) in &directions {
+            let new_row = self.position.0.wrapping_add(dr);
+            let new_col = self.position.1.wrapping_add(dc);
+
+            if new_row < map.grid.len() && new_col < map.cols {
+                match map.grid[new_row][new_col] {
+                    Tile::Obstacle => continue,
+                    Tile::Energy | Tile::Mineral => {
+                        preferred_move = Some((new_row, new_col));
+                        break;
+                    }
+                    Tile::Empty | Tile::Science => {
+                        if fallback_move.is_none() {
+                            fallback_move = Some((new_row, new_col));
+                        }
+                    }
+                }
+            }
+        }
+
+        if let Some(target) = preferred_move.or(fallback_move) {
+            self.position = target;
         }
     }
 }
