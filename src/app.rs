@@ -48,7 +48,7 @@ impl App {
                 .iter()
                 .any(|m| matches!(m, RobotModule::Explorer))
             {
-                robot.move_right(self.map.grid.len(), self.map.cols);
+                robot.smart_move(&self.map);
             }
 
             if robot
@@ -76,6 +76,6 @@ impl App {
             }
         }
 
-        self.tick_count > 40
+        self.tick_count > 100
     }
 }
