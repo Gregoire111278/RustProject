@@ -16,7 +16,11 @@ impl App {
         let robots = vec![Robot::new(
             1,
             (0, 0),
-            vec![RobotModule::Explorer, RobotModule::Collector],
+            vec![
+                RobotModule::Explorer,
+                RobotModule::Collector,
+                RobotModule::Scanner,
+            ],
         )];
         Self {
             map,
@@ -31,6 +35,14 @@ impl App {
         self.tick_count += 1;
 
         for robot in &mut self.robots {
+            if robot
+                .modules
+                .iter()
+                .any(|m| matches!(m, RobotModule::Scanner))
+            {
+                robot.scan_surroundings(&self.map);
+            }
+
             if robot
                 .modules
                 .iter()
