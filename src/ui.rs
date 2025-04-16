@@ -2,7 +2,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Cell, List, ListItem, Paragraph, Row, Table},
+    widgets::{Block, Borders, Cell, Paragraph, Row, Table},
     Frame,
 };
 
@@ -15,7 +15,7 @@ pub fn render(f: &mut Frame, app: &App) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
         .margin(1)
-        .constraints([Constraint::Percentage(70), Constraint::Percentage(30)])
+        .constraints([Constraint::Percentage(65), Constraint::Percentage(35)])
         .split(f.size());
 
     let map_grid: Vec<Row> = app
@@ -36,6 +36,39 @@ pub fn render(f: &mut Frame, app: &App) {
                                     .fg(Color::Cyan)
                                     .add_modifier(Modifier::BOLD),
                             )
+                        } else if app
+                            .robots
+                            .iter()
+                            .any(|r| r.known_map.contains_key(&(row_idx, col_idx)))
+                        {
+                            match tile {
+                                Tile::Empty => (
+                                    " · ",
+                                    Style::default()
+                                        .fg(Color::DarkGray)
+                                        .add_modifier(Modifier::DIM),
+                                ),
+                                Tile::Obstacle => (
+                                    " # ",
+                                    Style::default().fg(Color::Red).add_modifier(Modifier::DIM),
+                                ),
+                                Tile::Energy => (
+                                    " E ",
+                                    Style::default()
+                                        .fg(Color::Yellow)
+                                        .add_modifier(Modifier::DIM),
+                                ),
+                                Tile::Mineral => (
+                                    " M ",
+                                    Style::default().fg(Color::Blue).add_modifier(Modifier::DIM),
+                                ),
+                                Tile::Science => (
+                                    " S ",
+                                    Style::default()
+                                        .fg(Color::Green)
+                                        .add_modifier(Modifier::DIM),
+                                ),
+                            }
                         } else {
                             match tile {
                                 Tile::Empty => (" · ", Style::default().fg(Color::DarkGray)),
@@ -60,41 +93,48 @@ pub fn render(f: &mut Frame, app: &App) {
 
     f.render_widget(map_widget, chunks[0]);
 
-    let robot_info: Vec<ListItem> = app
-        .robots
-        .iter()
-        .map(|r| {
-            let modules = r
-                .modules
-                .iter()
-                .map(|m| format!("{:?}", m))
-                .collect::<Vec<_>>()
-                .join(", ");
-            ListItem::new(Line::from(vec![Span::styled(
-                format!(
-                    "Robot #{} at ({}, {}) [{}] | Energy: {} | Mineral: {}",
-                    r.id,
-                    r.position.0,
-                    r.position.1,
-                    modules,
-                    r.energy_collected,
-                    r.mineral_collected
-                ),
-                Style::default().fg(Color::Cyan),
-            )]))
-        })
-        .collect();
-
-    let robot_panel = List::new(robot_info)
-        .block(Block::default().title("Robots Info").borders(Borders::ALL))
-        .style(Style::default().fg(Color::Cyan));
-
     let right_chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(5), Constraint::Min(3)])
+        .constraints([Constraint::Min(14), Constraint::Length(9)])
         .split(chunks[1]);
 
+    let robot_info_text = app.robots.iter().map(|r| {
+        let modules = r
+            .modules
+            .iter()
+            .map(|m| format!("{:?}", m))
+            .collect::<Vec<_>>()
+            .join(", ");
+        format!(
+            "Robot #{} at ({}, {})\n  Modules: [{}]\n  Energy: {}\n  Mineral: {}\n  Known tiles: {}\n",
+            r.id,
+            r.position.0,
+            r.position.1,
+            modules,
+            r.energy_collected,
+            r.mineral_collected,
+            r.known_map.len()
+        )
+    }).collect::<Vec<_>>().join("\n");
+
+    let robot_panel = Paragraph::new(robot_info_text)
+        .block(Block::default().title("Robots Info").borders(Borders::ALL))
+        .style(Style::default().fg(Color::Cyan))
+        .wrap(ratatui::widgets::Wrap { trim: false });
+
     f.render_widget(robot_panel, right_chunks[0]);
+
+    let legend_lines = vec![
+        Line::from(" 🤖  - Robot"),
+        Line::from(" #  - Obstacle"),
+        Line::from(" E  - Energy"),
+        Line::from(" M  - Mineral"),
+        Line::from(" S  - Science"),
+        Line::from(" ·  - Empty"),
+    ];
+    let legend =
+        Paragraph::new(legend_lines).block(Block::default().title("Legend").borders(Borders::ALL));
+    f.render_widget(legend, right_chunks[1]);
 
     let status_chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -116,16 +156,4 @@ pub fn render(f: &mut Frame, app: &App) {
     f.render_widget(status, status_chunks[1]);
 
     thread::sleep(Duration::from_millis(150));
-
-    let legend_lines = vec![
-        Line::from(" 🤖  - Robot"),
-        Line::from(" #  - Obstacle"),
-        Line::from(" E  - Energy"),
-        Line::from(" M  - Mineral"),
-        Line::from(" S  - Science"),
-        Line::from(" ·  - Empty"),
-    ];
-    let legend =
-        Paragraph::new(legend_lines).block(Block::default().title("Legend").borders(Borders::ALL));
-    f.render_widget(legend, right_chunks[1]);
 }
