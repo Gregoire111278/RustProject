@@ -95,27 +95,32 @@ pub fn render(f: &mut Frame, app: &App) {
 
     let right_chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Min(14), Constraint::Length(9)])
+        .constraints([Constraint::Percentage(60), Constraint::Percentage(30)])
         .split(chunks[1]);
 
-    let robot_info_text = app.robots.iter().map(|r| {
-        let modules = r
-            .modules
-            .iter()
-            .map(|m| format!("{:?}", m))
-            .collect::<Vec<_>>()
-            .join(", ");
-        format!(
-            "Robot #{} at ({}, {})\n  Modules: [{}]\n  Energy: {}\n  Mineral: {}\n  Known tiles: {}\n",
-            r.id,
-            r.position.0,
-            r.position.1,
-            modules,
-            r.energy_collected,
-            r.mineral_collected,
-            r.known_map.len()
-        )
-    }).collect::<Vec<_>>().join("\n");
+    let robot_info_text = app
+        .robots
+        .iter()
+        .map(|r| {
+            let modules = r
+                .modules
+                .iter()
+                .map(|m| format!("{:?}", m))
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!(
+                "Robot #{} at ({}, {})\n  Modules: [{}]\n  Energy: {}  Mineral: {}  Known tiles: {}\n",
+                r.id,
+                r.position.0,
+                r.position.1,
+                modules,
+                r.energy_collected,
+                r.mineral_collected,
+                r.known_map.len()
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
 
     let robot_panel = Paragraph::new(robot_info_text)
         .block(Block::default().title("Robots Info").borders(Borders::ALL))

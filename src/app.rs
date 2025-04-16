@@ -13,15 +13,22 @@ pub struct App {
 impl App {
     pub fn new() -> Self {
         let map = Map::generate_with_dynamic_seed(25, 26);
-        let robots = vec![Robot::new(
-            1,
-            (0, 0),
-            vec![
-                RobotModule::Explorer,
-                RobotModule::Collector,
-                RobotModule::Scanner,
-            ],
-        )];
+        let robots = vec![
+            Robot::new(
+                1,
+                (0, 0),
+                vec![
+                    RobotModule::Explorer,
+                    RobotModule::Collector,
+                    RobotModule::Scanner,
+                ],
+            ),
+            Robot::new(
+                2,
+                (map.grid.len() - 1, map.cols - 1),
+                vec![RobotModule::Explorer, RobotModule::Scanner],
+            ),
+        ];
         Self {
             map,
             robots,
