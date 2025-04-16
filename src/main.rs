@@ -1,5 +1,32 @@
+mod app;
 mod map;
+mod robot;
+mod ui;
+mod utils;
 
-fn main() {
-    println!("Hello, world!");
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
+use ratatui::backend::CrosstermBackend;
+use ratatui::Terminal;
+use std::{error::Error, io};
+
+fn main() -> Result<(), Box<dyn Error>> {
+    enable_raw_mode()?;
+    let stdout = io::stdout();
+    let backend = CrosstermBackend::new(stdout);
+    let mut terminal = Terminal::new(backend)?;
+
+    let mut app = app::App::new();
+
+    loop {
+        terminal.draw(|f| {
+            ui::render(f, &app);
+        })?;
+
+        if app.tick() {
+            break;
+        }
+    }
+
+    disable_raw_mode()?;
+    Ok(())
 }
