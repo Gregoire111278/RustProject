@@ -1,5 +1,5 @@
 use crate::map::Tile;
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
 
 #[derive(Debug, PartialEq)]
 pub enum RobotModule {
@@ -14,6 +14,7 @@ pub struct Robot {
     pub known_map: std::collections::HashMap<(usize, usize), Tile>,
     pub id: usize,
     pub position: (usize, usize),
+    pub last_position: Option<(usize, usize)>,
     pub modules: Vec<RobotModule>,
     pub energy_collected: u32,
     pub mineral_collected: u32,
@@ -25,6 +26,7 @@ impl Robot {
             known_map: std::collections::HashMap::new(),
             id,
             position,
+            last_position: None,
             modules,
             energy_collected: 0,
             mineral_collected: 0,
@@ -45,46 +47,80 @@ impl Robot {
         }
     }
 
-    pub fn smart_move(
-        &mut self,
-        map: &crate::map::Map,
-        occupied_positions: &HashSet<(usize, usize)>,
-    ) {
-        let directions = [
-            (0, 1),          // right
-            (1, 0),          // down
-            (0, usize::MAX), // left
-            (usize::MAX, 0), // up
-        ];
+    pub fn smart_move(&mut self, map: &crate::map::Map, occupied: &HashSet<(usize, usize)>) {
+        let (sr, sc) = self.position;
 
-        let mut preferred_move = None;
-        let mut fallback_move = None;
+        let mut q = VecDeque::new();
+        let mut visited = HashSet::new();
+        let mut parent = std::collections::HashMap::new();
 
-        for &(dr, dc) in &directions {
-            let new_row = self.position.0.wrapping_add(dr);
-            let new_col = self.position.1.wrapping_add(dc);
+        q.push_back((sr, sc));
+        visited.insert((sr, sc));
 
-            if new_row < map.grid.len()
-                && new_col < map.cols
-                && !occupied_positions.contains(&(new_row, new_col))
-            {
-                match map.grid[new_row][new_col] {
-                    Tile::Obstacle => continue,
-                    Tile::Energy | Tile::Mineral => {
-                        preferred_move = Some((new_row, new_col));
-                        break;
+        let target = 'search: loop {
+            while let Some((r, c)) = q.pop_front() {
+                if matches!(map.grid[r][c], Tile::Energy | Tile::Mineral) && (r, c) != (sr, sc) {
+                    break 'search Some((r, c));
+                }
+
+                for (dr, dc) in &[(0, 1), (1, 0), (0, usize::MAX), (usize::MAX, 0)] {
+                    let nr = r.wrapping_add(*dr);
+                    let nc = c.wrapping_add(*dc);
+
+                    if nr >= map.grid.len()
+                        || nc >= map.cols
+                        || visited.contains(&(nr, nc))
+                        || occupied.contains(&(nr, nc))
+                        || matches!(map.grid[nr][nc], Tile::Obstacle)
+                    {
+                        continue;
                     }
-                    Tile::Empty | Tile::Science => {
-                        if fallback_move.is_none() {
-                            fallback_move = Some((new_row, new_col));
-                        }
-                    }
+                    visited.insert((nr, nc));
+                    parent.insert((nr, nc), (r, c));
+                    q.push_back((nr, nc));
                 }
             }
-        }
+            break None;
+        };
 
-        if let Some(target) = preferred_move.or(fallback_move) {
-            self.position = target;
+        let next = if let Some(mut cur) = target {
+            while let Some(&p) = parent.get(&cur) {
+                if p == (sr, sc) {
+                    break;
+                }
+                cur = p;
+            }
+            Some(cur)
+        } else {
+            let dirs = [(0, 1), (1, 0), (0, usize::MAX), (usize::MAX, 0)];
+            let mut best = None;
+            let mut best_score = -1;
+            for &(dr, dc) in &dirs {
+                let r = sr.wrapping_add(dr);
+                let c = sc.wrapping_add(dc);
+                if r >= map.grid.len()
+                    || c >= map.cols
+                    || occupied.contains(&(r, c))
+                    || matches!(map.grid[r][c], Tile::Obstacle)
+                {
+                    continue;
+                }
+                let score = if !self.known_map.contains_key(&(r, c)) {
+                    2
+                } else {
+                    1
+                };
+                if score > best_score {
+                    best_score = score;
+                    best = Some((r, c));
+                }
+            }
+            best
+        };
+
+        if let Some(p) = next {
+            self.last_position = Some(self.position);
+            self.position = p;
         }
     }
 

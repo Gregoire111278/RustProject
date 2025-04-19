@@ -30,6 +30,7 @@ impl App {
                 (map.grid.len() - 1, map.cols - 1),
                 vec![
                     RobotModule::Explorer,
+                    RobotModule::Collector,
                     RobotModule::Scanner,
                     RobotModule::Sensor,
                 ],
