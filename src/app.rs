@@ -1,6 +1,7 @@
 use crate::map::{Map, Tile};
 use crate::robot::Robot;
 use crate::robot::RobotModule;
+use crate::station;
 use std::collections::HashSet;
 
 pub struct App {
@@ -9,10 +10,16 @@ pub struct App {
     pub tick_count: u64,
     pub collected_energy: u32,
     pub collected_mineral: u32,
+
+    tx_report: std::sync::mpsc::Sender<station::RobotReport>,
+    rx_cmd: std::sync::mpsc::Receiver<station::StationCmd>,
 }
 
 impl App {
-    pub fn new() -> Self {
+    pub fn new(
+        tx_report: std::sync::mpsc::Sender<station::RobotReport>,
+        rx_cmd: std::sync::mpsc::Receiver<station::StationCmd>,
+    ) -> Self {
         let map = Map::generate_with_dynamic_seed(25, 26);
         let robots = vec![
             Robot::new(
@@ -42,6 +49,8 @@ impl App {
             tick_count: 0,
             collected_energy: 0,
             collected_mineral: 0,
+            tx_report,
+            rx_cmd,
         }
     }
 
