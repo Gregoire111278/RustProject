@@ -18,6 +18,9 @@ pub struct App {
     rx_cmd: std::sync::mpsc::Receiver<StationCmd>,
 
     pub logs: VecDeque<String>,
+
+    pub robots_scroll: u16,
+    pub logs_scroll: u16,
 }
 
 impl App {
@@ -57,6 +60,8 @@ impl App {
             tx_report,
             rx_cmd,
             logs: VecDeque::new(),
+            robots_scroll: 0,
+            logs_scroll: 0,
         }
     }
 
@@ -134,6 +139,6 @@ impl App {
             }
         }
 
-        self.tick_count > 100
+        self.tick_count > 200
     }
 }

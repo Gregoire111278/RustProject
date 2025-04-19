@@ -2,7 +2,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Cell, Paragraph, Row, Table},
+    widgets::{Block, Borders, Cell, Paragraph, Row, Scrollbar, ScrollbarState, Table},
     Frame,
 };
 
@@ -10,6 +10,11 @@ use crate::app::App;
 use crate::map::Tile;
 use std::thread;
 use std::time::Duration;
+
+fn make_state(content_len: usize, view_height: u16, offset: usize) -> ScrollbarState {
+    ScrollbarState::new(content_len)
+        .position(offset.min(content_len.saturating_sub(view_height as usize)))
+}
 
 pub fn render(f: &mut Frame, app: &App) {
     let chunks = Layout::default()
@@ -96,9 +101,9 @@ pub fn render(f: &mut Frame, app: &App) {
     let right_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Percentage(45),
-            Constraint::Percentage(35),
-            Constraint::Percentage(20),
+            Constraint::Percentage(40),
+            Constraint::Percentage(30),
+            Constraint::Percentage(30),
         ])
         .split(chunks[1]);
 
@@ -133,12 +138,27 @@ pub fn render(f: &mut Frame, app: &App) {
         .collect::<Vec<_>>()
         .join("\n");
 
+    let mut robots_state = make_state(
+        app.robots.len(),
+        right_chunks[0].height,
+        app.robots_scroll as usize,
+    );
+
     let robot_panel = Paragraph::new(robot_info_text)
         .block(Block::default().title("Robots Info").borders(Borders::ALL))
         .style(Style::default().fg(Color::Cyan))
-        .wrap(ratatui::widgets::Wrap { trim: false });
+        .wrap(ratatui::widgets::Wrap { trim: false })
+        .scroll((app.robots_scroll, 0));
 
     f.render_widget(robot_panel, right_chunks[0]);
+
+    let robots_bar = Scrollbar::default()
+        .orientation(ratatui::widgets::ScrollbarOrientation::VerticalRight)
+        .begin_symbol(Some("↑"))
+        .end_symbol(Some("↓"))
+        .style(Style::default().fg(Color::Cyan));
+
+    f.render_stateful_widget(robots_bar, right_chunks[0], &mut robots_state);
 
     let log_lines: Vec<Line> = app
         .logs
@@ -147,10 +167,25 @@ pub fn render(f: &mut Frame, app: &App) {
         .take(15)
         .map(|l| Line::from(l.clone()))
         .collect();
+
+    let mut logs_state = make_state(
+        app.logs.len(),
+        right_chunks[1].height,
+        app.logs_scroll as usize,
+    );
+
     let logs_widget = Paragraph::new(log_lines)
         .block(Block::default().title("Station Logs").borders(Borders::ALL))
-        .wrap(ratatui::widgets::Wrap { trim: false });
+        .wrap(ratatui::widgets::Wrap { trim: false })
+        .scroll((app.logs_scroll, 0));
+
     f.render_widget(logs_widget, right_chunks[1]);
+
+    let logs_bar = Scrollbar::default()
+        .orientation(ratatui::widgets::ScrollbarOrientation::VerticalRight)
+        .style(Style::default().fg(Color::Yellow));
+
+    f.render_stateful_widget(logs_bar, right_chunks[1], &mut logs_state);
 
     let legend_lines = vec![
         Line::from(" 🤖  - Robot"),

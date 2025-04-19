@@ -5,11 +5,13 @@ mod station;
 mod ui;
 mod utils;
 
+use crossterm::event::{self, Event, KeyCode};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
 use std::sync::mpsc;
 use std::thread;
+use std::time::Duration;
 use std::{error::Error, io};
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -30,10 +32,25 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut app = app::App::new(tx_report.clone(), rx_cmd);
 
     loop {
-        terminal.draw(|f| ui::render(f, &app))?;
-        if app.tick() {
+        if event::poll(Duration::from_millis(20))? {
+            if let Event::Key(key) = event::read()? {
+                match key.code {
+                    KeyCode::Char('q') => break,
+                    KeyCode::Up => app.robots_scroll = app.robots_scroll.saturating_sub(1),
+                    KeyCode::Down => app.robots_scroll = app.robots_scroll.saturating_add(1),
+                    KeyCode::PageUp => app.logs_scroll = app.logs_scroll.saturating_sub(3),
+                    KeyCode::PageDown => app.logs_scroll = app.logs_scroll.saturating_add(3),
+                    _ => {}
+                }
+            }
+        }
+
+        let done = app.tick();
+        if done {
             break;
         }
+
+        terminal.draw(|f| ui::render(f, &app))?;
     }
 
     disable_raw_mode()?;
