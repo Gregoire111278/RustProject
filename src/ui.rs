@@ -95,7 +95,11 @@ pub fn render(f: &mut Frame, app: &App) {
 
     let right_chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Percentage(60), Constraint::Percentage(30)])
+        .constraints([
+            Constraint::Percentage(45),
+            Constraint::Percentage(35),
+            Constraint::Percentage(20),
+        ])
         .split(chunks[1]);
 
     let robot_info_text = app
@@ -136,6 +140,18 @@ pub fn render(f: &mut Frame, app: &App) {
 
     f.render_widget(robot_panel, right_chunks[0]);
 
+    let log_lines: Vec<Line> = app
+        .logs
+        .iter()
+        .rev()
+        .take(15)
+        .map(|l| Line::from(l.clone()))
+        .collect();
+    let logs_widget = Paragraph::new(log_lines)
+        .block(Block::default().title("Station Logs").borders(Borders::ALL))
+        .wrap(ratatui::widgets::Wrap { trim: false });
+    f.render_widget(logs_widget, right_chunks[1]);
+
     let legend_lines = vec![
         Line::from(" 🤖  - Robot"),
         Line::from(" #  - Obstacle"),
@@ -146,7 +162,7 @@ pub fn render(f: &mut Frame, app: &App) {
     ];
     let legend =
         Paragraph::new(legend_lines).block(Block::default().title("Legend").borders(Borders::ALL));
-    f.render_widget(legend, right_chunks[1]);
+    f.render_widget(legend, right_chunks[2]);
 
     let status_chunks = Layout::default()
         .direction(Direction::Vertical)

@@ -1,7 +1,17 @@
 use crate::map::Tile;
+use crate::station::RobotReport;
 use std::collections::{HashSet, VecDeque};
 
-#[derive(Debug, PartialEq)]
+/// nbr of resources a robot can carry
+pub const PAYLOAD_LIMIT: u32 = 10;
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum RobotState {
+    Exploring,
+    Returning,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum RobotModule {
     Explorer,
     Collector,
@@ -18,6 +28,8 @@ pub struct Robot {
     pub modules: Vec<RobotModule>,
     pub energy_collected: u32,
     pub mineral_collected: u32,
+    pub state: RobotState,
+    pub dirty_tiles: Vec<((usize, usize), Tile)>,
 }
 
 impl Robot {
@@ -30,6 +42,8 @@ impl Robot {
             modules,
             energy_collected: 0,
             mineral_collected: 0,
+            state: RobotState::Exploring,
+            dirty_tiles: Vec::new(),
         }
     }
 
@@ -42,6 +56,7 @@ impl Robot {
                 if r < map.grid.len() && c < map.cols {
                     let tile = map.grid[r][c];
                     self.known_map.insert((r, c), tile);
+                    self.dirty_tiles.push(((r, c), tile));
                 }
             }
         }
@@ -124,6 +139,7 @@ impl Robot {
         }
     }
 
+    #[allow(dead_code)]
     pub fn scan_for_robots(
         &self,
         robot_snapshots: &[(usize, (usize, usize))],
@@ -147,5 +163,50 @@ impl Robot {
         }
 
         nearby
+    }
+
+    pub fn make_report(&mut self) -> RobotReport {
+        let report = RobotReport {
+            robot_id: self.id,
+            map_diff: std::mem::take(&mut self.dirty_tiles),
+            energy: std::mem::take(&mut self.energy_collected),
+            mineral: std::mem::take(&mut self.mineral_collected),
+        };
+        report
+    }
+
+    pub fn step_towards(
+        &mut self,
+        target: (usize, usize),
+        map: &crate::map::Map,
+        occupied: &HashSet<(usize, usize)>,
+    ) {
+        let (tr, tc) = target;
+        let mut candidates = Vec::new();
+        if self.position.0 > tr {
+            candidates.push((-1isize, 0));
+        }
+        if self.position.0 < tr {
+            candidates.push((1, 0));
+        }
+        if self.position.1 > tc {
+            candidates.push((0, -1));
+        }
+        if self.position.1 < tc {
+            candidates.push((0, 1));
+        }
+
+        for (dr, dc) in candidates {
+            let nr = self.position.0.wrapping_add(dr as usize);
+            let nc = self.position.1.wrapping_add(dc as usize);
+            if nr < map.grid.len()
+                && nc < map.cols
+                && !occupied.contains(&(nr, nc))
+                && map.grid[nr][nc] != Tile::Obstacle
+            {
+                self.position = (nr, nc);
+                break;
+            }
+        }
     }
 }
