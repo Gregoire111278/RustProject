@@ -1,8 +1,12 @@
-#[derive(Debug)]
+use crate::map::Tile;
+use std::collections::HashSet;
+
+#[derive(Debug, PartialEq)]
 pub enum RobotModule {
     Explorer,
     Collector,
     Scanner,
+    Sensor,
 }
 
 #[derive(Debug)]
@@ -14,8 +18,6 @@ pub struct Robot {
     pub energy_collected: u32,
     pub mineral_collected: u32,
 }
-
-use crate::map::Tile;
 
 impl Robot {
     pub fn new(id: usize, position: (usize, usize), modules: Vec<RobotModule>) -> Self {
@@ -43,7 +45,11 @@ impl Robot {
         }
     }
 
-    pub fn smart_move(&mut self, map: &crate::map::Map) {
+    pub fn smart_move(
+        &mut self,
+        map: &crate::map::Map,
+        occupied_positions: &HashSet<(usize, usize)>,
+    ) {
         let directions = [
             (0, 1),          // right
             (1, 0),          // down
@@ -58,7 +64,10 @@ impl Robot {
             let new_row = self.position.0.wrapping_add(dr);
             let new_col = self.position.1.wrapping_add(dc);
 
-            if new_row < map.grid.len() && new_col < map.cols {
+            if new_row < map.grid.len()
+                && new_col < map.cols
+                && !occupied_positions.contains(&(new_row, new_col))
+            {
                 match map.grid[new_row][new_col] {
                     Tile::Obstacle => continue,
                     Tile::Energy | Tile::Mineral => {
@@ -77,5 +86,30 @@ impl Robot {
         if let Some(target) = preferred_move.or(fallback_move) {
             self.position = target;
         }
+    }
+
+    pub fn scan_for_robots(
+        &self,
+        robot_snapshots: &[(usize, (usize, usize))],
+    ) -> HashSet<(usize, usize)> {
+        let mut nearby = HashSet::new();
+        let (row, col) = self.position;
+
+        for dr in -1..=1 {
+            for dc in -1..=1 {
+                let r = row.wrapping_add(dr as usize);
+                let c = col.wrapping_add(dc as usize);
+                if (r, c) != self.position {
+                    if robot_snapshots
+                        .iter()
+                        .any(|&(id, pos)| id != self.id && pos == (r, c))
+                    {
+                        nearby.insert((r, c));
+                    }
+                }
+            }
+        }
+
+        nearby
     }
 }

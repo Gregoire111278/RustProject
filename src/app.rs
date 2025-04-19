@@ -1,6 +1,7 @@
 use crate::map::{Map, Tile};
 use crate::robot::Robot;
 use crate::robot::RobotModule;
+use std::collections::HashSet;
 
 pub struct App {
     pub map: Map,
@@ -21,12 +22,17 @@ impl App {
                     RobotModule::Explorer,
                     RobotModule::Collector,
                     RobotModule::Scanner,
+                    RobotModule::Sensor,
                 ],
             ),
             Robot::new(
                 2,
                 (map.grid.len() - 1, map.cols - 1),
-                vec![RobotModule::Explorer, RobotModule::Scanner],
+                vec![
+                    RobotModule::Explorer,
+                    RobotModule::Scanner,
+                    RobotModule::Sensor,
+                ],
             ),
         ];
         Self {
@@ -41,28 +47,28 @@ impl App {
     pub fn tick(&mut self) -> bool {
         self.tick_count += 1;
 
+        let robot_snapshots: Vec<(usize, (usize, usize))> =
+            self.robots.iter().map(|r| (r.id, r.position)).collect();
+
         for robot in &mut self.robots {
-            if robot
-                .modules
-                .iter()
-                .any(|m| matches!(m, RobotModule::Scanner))
-            {
+            if robot.modules.contains(&RobotModule::Scanner) {
                 robot.scan_surroundings(&self.map);
             }
 
-            if robot
-                .modules
-                .iter()
-                .any(|m| matches!(m, RobotModule::Explorer))
-            {
-                robot.smart_move(&self.map);
+            if robot.modules.contains(&RobotModule::Explorer) {
+                let nearby_robots = robot.scan_for_robots(&robot_snapshots);
+                let mut occupied: HashSet<(usize, usize)> =
+                    robot_snapshots.iter().map(|(_, pos)| *pos).collect();
+
+                for pos in &nearby_robots {
+                    occupied.insert(*pos);
+                }
+
+                occupied.remove(&robot.position);
+                robot.smart_move(&self.map, &occupied);
             }
 
-            if robot
-                .modules
-                .iter()
-                .any(|m| matches!(m, RobotModule::Collector))
-            {
+            if robot.modules.contains(&RobotModule::Collector) {
                 let (row, col) = robot.position;
                 if row < self.map.grid.len() && col < self.map.cols {
                     let tile = &mut self.map.grid[row][col];
