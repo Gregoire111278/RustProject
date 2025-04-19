@@ -109,14 +109,21 @@ pub fn render(f: &mut Frame, app: &App) {
                 .collect::<Vec<_>>()
                 .join(", ");
             format!(
-                "Robot #{} at ({}, {})\n  Modules: [{}]\n  Energy: {}  Mineral: {}  Known tiles: {}\n",
+                "Robot #{} at ({}, {})\n  Modules: [{}]\n  Energy: {}  Mineral: {}  Known tiles: {}\n  Nearby Robots: {}\n",
                 r.id,
                 r.position.0,
                 r.position.1,
                 modules,
                 r.energy_collected,
                 r.mineral_collected,
-                r.known_map.len()
+                r.known_map.len(),
+                app.robots.iter()
+                    .filter(|other| {
+                        other.id != r.id
+                            && (r.position.0 as isize - other.position.0 as isize).abs() <= 1
+                            && (r.position.1 as isize - other.position.1 as isize).abs() <= 1
+                    })
+                    .count()
             )
         })
         .collect::<Vec<_>>()
