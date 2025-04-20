@@ -1,3 +1,4 @@
+use crate::map::MapDiff;
 use crate::map::Tile;
 use crate::station::RobotReport;
 use std::collections::{HashSet, VecDeque};
@@ -166,9 +167,10 @@ impl Robot {
     }
 
     pub fn make_report(&mut self) -> RobotReport {
+        let diff_vec = std::mem::take(&mut self.dirty_tiles);
         let report = RobotReport {
             robot_id: self.id,
-            map_diff: std::mem::take(&mut self.dirty_tiles),
+            map_diff: MapDiff(diff_vec),
             energy: std::mem::take(&mut self.energy_collected),
             mineral: std::mem::take(&mut self.mineral_collected),
         };

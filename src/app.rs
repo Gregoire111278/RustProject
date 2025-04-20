@@ -137,8 +137,11 @@ impl App {
                     }
                     self.logs.push_back(line);
                 }
-                StationCmd::Spawn { modules, start_pos } => {
-                    let id = self.robots.iter().map(|r| r.id).max().unwrap_or(0) + 1;
+                StationCmd::Spawn {
+                    id,
+                    modules,
+                    start_pos,
+                } => {
                     self.robots.push(Robot::new(id, start_pos, modules));
                 }
                 StationCmd::Shutdown => return true,
