@@ -12,6 +12,23 @@ pub enum Tile {
     Science,
 }
 
+#[derive(Debug, Clone)]
+pub struct MapDiff(pub Vec<((usize, usize), Option<Tile>, Tile)>);
+
+impl MapDiff {
+    pub fn apply(&self, map: &mut Map) {
+        for &((r, c), _before, after) in &self.0 {
+            if r < map.grid.len() && c < map.cols {
+                map.grid[r][c] = after;
+            }
+        }
+    }
+
+    pub fn merge(&mut self, other: MapDiff) {
+        self.0.extend(other.0);
+    }
+}
+
 pub struct Map {
     pub grid: Vec<Vec<Tile>>,
     pub cols: usize,

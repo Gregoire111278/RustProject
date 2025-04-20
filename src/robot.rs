@@ -29,7 +29,7 @@ pub struct Robot {
     pub energy_collected: u32,
     pub mineral_collected: u32,
     pub state: RobotState,
-    pub dirty_tiles: Vec<((usize, usize), Tile)>,
+    pub dirty_tiles: Vec<((usize, usize), Option<Tile>, Tile)>,
 }
 
 impl Robot {
@@ -56,7 +56,7 @@ impl Robot {
                 if r < map.grid.len() && c < map.cols {
                     let tile = map.grid[r][c];
                     self.known_map.insert((r, c), tile);
-                    self.dirty_tiles.push(((r, c), tile));
+                    self.dirty_tiles.push(((r, c), None, tile));
                 }
             }
         }

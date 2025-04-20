@@ -6,7 +6,7 @@ use std::sync::mpsc::{Receiver, Sender};
 #[derive(Debug, Clone)]
 pub struct RobotReport {
     pub robot_id: usize,
-    pub map_diff: Vec<((usize, usize), Tile)>,
+    pub map_diff: Vec<((usize, usize), Option<Tile>, Tile)>,
     pub energy: u32,
     pub mineral: u32,
 }
@@ -46,22 +46,28 @@ impl Station {
 
     pub fn run(mut self) {
         while let Ok(report) = self.rx.recv() {
-            for (coord, tile) in report.map_diff {
-                self.master_map.insert(coord, tile);
+            for (coord, _old_tile, new_tile) in report.map_diff {
+                self.master_map.insert(coord, new_tile);
             }
             self.energy_stock += report.energy;
             self.mineral_stock += report.mineral;
 
             let _ = self.tx_cmd.send(StationCmd::Log(format!(
                 "Robot #{:?} delivered {}E {}M  | stocks {}E {}M",
-                report.robot_id, report.energy, report.mineral, self.energy_stock, self.mineral_stock
+                report.robot_id,
+                report.energy,
+                report.mineral,
+                self.energy_stock,
+                self.mineral_stock
             )));
-            
+
             if self.energy_stock >= 10 && self.mineral_stock >= 10 {
                 self.energy_stock -= 10;
                 self.mineral_stock -= 10;
 
-                let _ = self.tx_cmd.send(StationCmd::Log("Spawning new robot".into()));
+                let _ = self
+                    .tx_cmd
+                    .send(StationCmd::Log("Spawning new robot".into()));
                 let _ = self.tx_cmd.send(StationCmd::Spawn {
                     modules: vec![RobotModule::Explorer, RobotModule::Collector],
                     start_pos: (0, 0),
