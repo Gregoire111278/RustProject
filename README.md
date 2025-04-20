@@ -45,6 +45,14 @@ git checkout bevy-version
 cargo run
 ```
 
+### 4. Run Tests (currently only in Ratatui version i.e. main branch)
+
+You can run the test suite using:
+
+```bash
+cargo test
+```
+
 ---
 
 ## 📂 Final Branches
