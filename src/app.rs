@@ -1,6 +1,5 @@
 use crate::map::{Map, Tile};
-use crate::robot::Robot;
-use crate::robot::{RobotModule, RobotState, PAYLOAD_LIMIT};
+use crate::robot::{Robot, RobotModule, RobotState, PAYLOAD_LIMIT};
 use crate::station;
 use crate::station::StationCmd;
 use std::collections::{HashSet, VecDeque};
@@ -13,12 +12,9 @@ pub struct App {
     pub tick_count: u64,
     pub collected_energy: u32,
     pub collected_mineral: u32,
-
     tx_report: std::sync::mpsc::Sender<station::RobotReport>,
     rx_cmd: std::sync::mpsc::Receiver<StationCmd>,
-
     pub logs: VecDeque<String>,
-
     pub robots_scroll: u16,
     pub logs_scroll: u16,
 }
@@ -65,6 +61,10 @@ impl App {
         }
     }
 
+    fn at_station(pos: (usize, usize)) -> bool {
+        pos == BASE_POS
+    }
+
     pub fn tick(&mut self) -> bool {
         self.tick_count += 1;
 
@@ -82,16 +82,22 @@ impl App {
                     let tile = &mut self.map.grid[row][col];
                     match *tile {
                         Tile::Energy => {
+                            let prev = *tile;
                             robot.energy_collected += 1;
                             self.collected_energy += 1;
                             *tile = Tile::Empty;
-                            robot.dirty_tiles.push(((row, col), Tile::Empty));
+                            robot
+                                .dirty_tiles
+                                .push(((row, col), Some(prev), Tile::Empty));
                         }
                         Tile::Mineral => {
+                            let prev = *tile;
                             robot.mineral_collected += 1;
                             self.collected_mineral += 1;
                             *tile = Tile::Empty;
-                            robot.dirty_tiles.push(((row, col), Tile::Empty));
+                            robot
+                                .dirty_tiles
+                                .push(((row, col), Some(prev), Tile::Empty));
                         }
                         _ => {}
                     }
@@ -117,7 +123,7 @@ impl App {
                 }
             }
 
-            if robot.state == RobotState::Returning && robot.position == BASE_POS {
+            if robot.state == RobotState::Returning && Self::at_station(robot.position) {
                 let _ = self.tx_report.send(robot.make_report());
                 robot.state = RobotState::Exploring;
             }
@@ -131,8 +137,11 @@ impl App {
                     }
                     self.logs.push_back(line);
                 }
-                StationCmd::Spawn { modules, start_pos } => {
-                    let id = self.robots.iter().map(|r| r.id).max().unwrap_or(0) + 1;
+                StationCmd::Spawn {
+                    id,
+                    modules,
+                    start_pos,
+                } => {
                     self.robots.push(Robot::new(id, start_pos, modules));
                 }
                 StationCmd::Shutdown => return true,
