@@ -28,9 +28,11 @@ struct Tile {
     y: usize,
 }
 
-#[derive(Component)]
+#[derive(Component, Clone, Copy)]
 struct ResourcePoint {
     resource_type: ResourceType,
+    x: usize,
+    y: usize,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -50,6 +52,7 @@ struct Robot {
     direction: Direction,
     directional_momentum: u32,
     exploration_timer: Timer,
+    carrying_resource: Option<ResourceType>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -119,15 +122,34 @@ struct WorldMap {
     tiles: Vec<Vec<TileType>>,
 }
 
+// Compteur de ressources
+#[derive(Resource, Default)]
+struct ResourceCounter {
+    minerals: u32,
+    energy: u32,
+}
+
+// Composant pour le texte des compteurs
+#[derive(Component)]
+enum CounterText {
+    Mineral,
+    Energy,
+}
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .insert_resource(ClearColor(Color::BLACK))
+        .insert_resource(ResourceCounter::default())
         .add_systems(Startup, setup)
+        .add_systems(Startup, setup_ui)
         .add_systems(Update, (
             robot_observation_system,
             robot_decision_system,
             robot_movement_system,
+            direct_resource_collection,  // Système simplifié pour la collecte
+            update_robot_visuals,        // Changement visuel des robots
+            update_counter_text,         // Mise à jour des compteurs
         ).chain())
         .run();
 }
@@ -272,7 +294,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     });
 
     let directions = [(1, 0), (-1, 0)];
-    for (idx, (dx, dy)) in directions.iter().enumerate() {
+    for (_idx, (dx, dy)) in directions.iter().enumerate() {
         let rx = station_x as isize + dx;
         let ry = station_y as isize + dy;
 
@@ -293,6 +315,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                         direction: Direction::random(),
                         directional_momentum: rng.gen_range(5..15),
                         exploration_timer: Timer::from_seconds(0.5, TimerMode::Repeating),
+                        carrying_resource: None,
                     },
                     MapMemory {
                         tiles: memory,
@@ -357,6 +380,8 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         commands.spawn((
             ResourcePoint {
                 resource_type: ResourceType::Mineral,
+                x: candidate_x,
+                y: candidate_y,
             },
             SpriteBundle {
                 texture: mineral_handle.clone(),
@@ -415,6 +440,8 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         commands.spawn((
             ResourcePoint {
                 resource_type: ResourceType::Energy,
+                x: candidate_x,
+                y: candidate_y,
             },
             SpriteBundle {
                 texture: energy_handle.clone(),
@@ -433,12 +460,150 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         placed_positions.push((candidate_x, candidate_y));
         placed_energy += 1;
     }
+    
+    println!("==== SETUP TERMINÉ ====");
+    println!("Station placée en ({}, {})", station_x, station_y);
+    println!("Minéraux placés: {}", placed_minerals);
+    println!("Énergie placée: {}", placed_energy);
+}
+
+fn setup_ui(mut commands: Commands) {
+    // Créer le texte pour les minéraux (en haut à gauche)
+    commands.spawn((
+        Text2dBundle {
+            text: Text::from_section(
+                "Minéraux: 0",
+                TextStyle {
+                    font_size: 30.0,
+                    color: Color::WHITE,
+                    ..default()
+                },
+            ),
+            transform: Transform::from_xyz(-550.0, 350.0, 100.0),
+            ..default()
+        },
+        CounterText::Mineral,
+    ));
+
+    // Créer le texte pour l'énergie (en dessous)
+    commands.spawn((
+        Text2dBundle {
+            text: Text::from_section(
+                "Énergie: 0",
+                TextStyle {
+                    font_size: 30.0,
+                    color: Color::WHITE,
+                    ..default()
+                },
+            ),
+            transform: Transform::from_xyz(-550.0, 300.0, 100.0),
+            ..default()
+        },
+        CounterText::Energy,
+    ));
+    
+    println!("Interface utilisateur créée!");
+}
+
+// Mise à jour des textes des compteurs
+fn update_counter_text(
+    resource_counter: Res<ResourceCounter>,
+    mut query: Query<(&mut Text, &CounterText)>,
+) {
+    for (mut text, counter_type) in query.iter_mut() {
+        match counter_type {
+            CounterText::Mineral => {
+                text.sections[0].value = format!("Minéraux: {}", resource_counter.minerals);
+            },
+            CounterText::Energy => {
+                text.sections[0].value = format!("Énergie: {}", resource_counter.energy);
+            },
+        }
+    }
+}
+
+// Mise à jour de l'apparence des robots
+fn update_robot_visuals(mut query: Query<(&Robot, &mut Sprite), Changed<Robot>>) {
+    for (robot, mut sprite) in query.iter_mut() {
+        if let Some(resource_type) = robot.carrying_resource {
+            // Robot avec ressource: couleur différente
+            match resource_type {
+                ResourceType::Mineral => sprite.color = Color::rgba(1.0, 0.0, 0.0, 0.8), // Rouge pour minéraux
+                ResourceType::Energy => sprite.color = Color::rgba(1.0, 1.0, 0.0, 0.8),  // Jaune pour énergie
+            }
+        } else {
+            // Robot sans ressource: couleur normale
+            sprite.color = Color::rgba(1.0, 1.0, 1.0, 1.0);
+        }
+    }
+}
+
+// NOUVEAU SYSTÈME SIMPLIFIÉ DE COLLECTE DES RESSOURCES
+fn direct_resource_collection(
+    mut commands: Commands,
+    mut resource_counter: ResMut<ResourceCounter>,
+    mut robots: Query<(&mut Robot, &Transform)>,
+    resources: Query<(Entity, &ResourcePoint, &Transform)>,
+    station_pos: Res<StationPosition>,
+) {
+    let offset_x = WIDTH as f32 * TILE_SIZE / 2.0;
+    let offset_y = HEIGHT as f32 * TILE_SIZE / 2.0;
+    
+    // Pour chaque robot
+    for (mut robot, robot_transform) in robots.iter_mut() {
+        // Calculez la position actuelle du robot
+        let rx = ((robot_transform.translation.x + offset_x) / TILE_SIZE).round() as usize;
+        let ry = ((robot_transform.translation.y + offset_y) / TILE_SIZE).round() as usize;
+        
+        // Si le robot est près de la station et porte une ressource
+        if let Some(resource_type) = robot.carrying_resource {
+            if (rx as isize - station_pos.x as isize).abs() < 5 && 
+               (ry as isize - station_pos.y as isize).abs() < 5 {
+                // Incrémente le compteur
+                match resource_type {
+                    ResourceType::Mineral => {
+                        resource_counter.minerals += 1;
+                        println!("Minéraux: {}", resource_counter.minerals);
+                    },
+                    ResourceType::Energy => {
+                        resource_counter.energy += 1;
+                        println!("Énergie: {}", resource_counter.energy);
+                    },
+                }
+                
+                // Le robot ne porte plus de ressource
+                robot.carrying_resource = None;
+            }
+        } 
+        // Si le robot n'a pas de ressource, vérifie s'il peut en collecter une
+        else {
+            for (entity, resource, resource_transform) in resources.iter() {
+                // Calculez la position de la ressource
+                let resx = ((resource_transform.translation.x + offset_x) / TILE_SIZE).round() as usize;
+                let resy = ((resource_transform.translation.y + offset_y) / TILE_SIZE).round() as usize;
+                
+                // Calcule la distance entre le robot et la ressource
+                let distance = ((rx as f32 - resx as f32).powi(2) + (ry as f32 - resy as f32).powi(2)).sqrt();
+                
+                // Si le robot est assez proche (rayon de 10 unités)
+                if distance < 10.0 {
+                    // Le robot collecte la ressource
+                    robot.carrying_resource = Some(resource.resource_type);
+                    
+                    // Supprime la ressource du monde
+                    commands.entity(entity).despawn();
+                    
+                    println!("Robot collecte une ressource de type {:?}", resource.resource_type);
+                    break; // Sortir de la boucle après avoir collecté une ressource
+                }
+            }
+        }
+    }
 }
 
 fn robot_observation_system(
     mut robots: Query<(&mut Robot, &mut MapMemory, &Transform)>,
-    tiles: Query<&Tile>,
-    resource_points: Query<(&Transform, &ResourcePoint)>,
+    _tiles: Query<&Tile>,
     world_map: Res<WorldMap>,
     time: Res<Time>,
 ) {
@@ -494,7 +659,12 @@ fn robot_decision_system(
         
         match robot.current_goal {
             RobotGoal::Explore => {
-                if rng.gen_range(0..100) < 10 && !map_memory.known_resources.is_empty() {
+                // Si le robot transporte déjà une ressource, il retourne à la station
+                if robot.carrying_resource.is_some() {
+                    robot.current_goal = RobotGoal::ReturnToStation;
+                } 
+                // Sinon, il peut décider d'aller chercher une ressource ou continuer d'explorer
+                else if !map_memory.known_resources.is_empty() && rng.gen_range(0..100) < 70 {
                     let resource_idx = rng.gen_range(0..map_memory.known_resources.len());
                     let (res_x, res_y, res_type) = map_memory.known_resources[resource_idx];
                     robot.current_goal = RobotGoal::GoToResource {
@@ -502,9 +672,8 @@ fn robot_decision_system(
                         y: res_y,
                         resource_type: res_type,
                     };
-                } else if rng.gen_range(0..100) < 5 {
-                    robot.current_goal = RobotGoal::ReturnToStation;
                 } else {
+                    // Continue d'explorer
                     robot.directional_momentum -= 1;
                     if robot.directional_momentum == 0 {
                         robot.direction = get_smart_exploration_direction(&robot, map_memory);
@@ -512,14 +681,18 @@ fn robot_decision_system(
                     }
                 }
             },
-            RobotGoal::GoToResource { x, y, .. } => {
-                if (robot.x as isize - x as isize).abs() < 2 && (robot.y as isize - y as isize).abs() < 2 {
+            RobotGoal::GoToResource { .. } => {
+                // Cette logique est maintenant gérée par direct_resource_collection
+                // pour une meilleure réactivité
+                if robot.carrying_resource.is_some() {
                     robot.current_goal = RobotGoal::ReturnToStation;
                 }
             },
             RobotGoal::ReturnToStation => {
+                // Si le robot est à la station, il dépose sa ressource et repart explorer
                 if (robot.x as isize - station_pos.x as isize).abs() < 3 && 
                    (robot.y as isize - station_pos.y as isize).abs() < 3 {
+                    robot.carrying_resource = None;
                     robot.current_goal = RobotGoal::Explore;
                     robot.direction = Direction::random();
                     robot.directional_momentum = rng.gen_range(5..15);
