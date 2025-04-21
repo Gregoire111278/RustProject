@@ -1,4 +1,8 @@
-# Projet : Essaim de Robots pour l'Exploration et l'Étude Astrobiologique (EREEA)
+### Projet : Essaim de Robots pour l'Exploration et l'Étude Astrobiologique (EREEA)
+
+# NEBULINK
+![image](https://github.com/user-attachments/assets/468ef0f8-15d8-41f3-b010-711738c24782)
+
 
 ## Group members:
 
@@ -6,8 +10,6 @@
 - Ali Loudagh
 - Nahel Kini
 - Roman Sabechkine
-
-<img width="559" alt="Image" src="https://github.com/user-attachments/assets/fda03b48-bbc8-408b-a030-90fed5b05d45" />
 
 This Rust project demonstrates two different UI approaches for building a robot simulation:
 
