@@ -166,10 +166,11 @@ impl Robot {
         nearby
     }
 
-    pub fn make_report(&mut self) -> RobotReport {
+    pub fn make_report(&mut self, tick: u64) -> RobotReport {
         let diff_vec = std::mem::take(&mut self.dirty_tiles);
         let report = RobotReport {
             robot_id: self.id,
+            tick,
             map_diff: MapDiff(diff_vec),
             energy: std::mem::take(&mut self.energy_collected),
             mineral: std::mem::take(&mut self.mineral_collected),
