@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use noise::{NoiseFn, Perlin, Seedable};
 use rand::Rng;
 use std::collections::HashMap;
+use std::collections::HashSet;
 
 const TILE_SIZE: f32 = 4.0;
 const WIDTH: usize = 370;
@@ -60,6 +61,7 @@ impl Default for SharedKnowledge {
 enum ResourceType {
     Mineral,
     Energy,
+    Science,
 }
 
 #[derive(Component)]
@@ -160,6 +162,7 @@ struct WorldMap {
 struct ResourceCounter {
     minerals: u32,
     energy: u32,
+    science: u32,
 }
 
 // Composant pour le texte des compteurs
@@ -167,6 +170,7 @@ struct ResourceCounter {
 enum CounterText {
     Mineral,
     Energy,
+    Science,
 }
 
 fn main() {
@@ -175,15 +179,15 @@ fn main() {
         .insert_resource(ClearColor(Color::BLACK))
         .insert_resource(ResourceCounter::default())
         .insert_resource(GameTimer::default())
-        .insert_resource(SharedKnowledge::default()) // Nouvelle ressource
+        .insert_resource(SharedKnowledge::default())
         .add_systems(Startup, setup)
         .add_systems(Startup, setup_ui)
         .add_systems(Update, (
             robot_observation_system,
-            share_knowledge_system, // Nouveau système de partage
+            share_knowledge_system,
             robot_decision_system,
             robot_movement_system,
-            direct_resource_collection,
+            direct_resource_collection, // Assurez-vous que cette fonction a accès à WorldMap
             update_robot_visuals,
             update_counter_text,
             update_timer,
@@ -557,7 +561,24 @@ fn setup_ui(mut commands: Commands) {
         CounterText::Energy,
     ));
     
-    // NOUVEAU: Texte pour le timer (en dessous)
+    // Texte pour les découvertes scientifiques
+    commands.spawn((
+        Text2dBundle {
+            text: Text::from_section(
+                "Science: 0",
+                TextStyle {
+                    font_size: 30.0,
+                    color: Color::WHITE,
+                    ..default()
+                },
+            ),
+            transform: Transform::from_xyz(-550.0, 250.0, 100.0),
+            ..default()
+        },
+        CounterText::Science,
+    ));
+    
+    // Texte pour le timer (en dessous)
     commands.spawn((
         Text2dBundle {
             text: Text::from_section(
@@ -568,7 +589,7 @@ fn setup_ui(mut commands: Commands) {
                     ..default()
                 },
             ),
-            transform: Transform::from_xyz(-550.0, 250.0, 100.0),
+            transform: Transform::from_xyz(-550.0, 200.0, 100.0), // Position ajustée
             ..default()
         },
         TimerText,
@@ -576,6 +597,40 @@ fn setup_ui(mut commands: Commands) {
     
     println!("Interface utilisateur créée!");
 }
+
+// Fonction helper pour transformer toute une zone scientifique connectée
+fn convert_science_zone(x: usize, y: usize, world_map: &mut WorldMap) {
+    use std::collections::VecDeque;
+    
+    // File d'attente pour le flood fill
+    let mut queue = VecDeque::new();
+    queue.push_back((x, y));
+    
+    // Ensemble des cellules déjà visitées
+    let mut visited = HashSet::new();
+    visited.insert((x, y));
+    
+    // Directions pour vérifier les voisins (4 directions principales)
+    let directions = [(0, 1), (1, 0), (0, -1), (-1, 0)];
+    
+    while let Some((current_x, current_y)) = queue.pop_front() {
+        // Convertir ce pixel en passable
+        world_map.tiles[current_y][current_x] = TileType::Passable;
+        
+        // Vérifier les voisins
+        for &(dx, dy) in &directions {
+            let nx = (current_x as isize + dx).clamp(0, WIDTH as isize - 1) as usize;
+            let ny = (current_y as isize + dy).clamp(0, HEIGHT as isize - 1) as usize;
+            
+            // Si c'est une case scientifique non visitée, l'ajouter à la file
+            if world_map.tiles[ny][nx] == TileType::Science && !visited.contains(&(nx, ny)) {
+                visited.insert((nx, ny));
+                queue.push_back((nx, ny));
+            }
+        }
+    }
+}
+
 
 // Mise à jour des textes des compteurs
 fn update_counter_text(
@@ -590,6 +645,9 @@ fn update_counter_text(
             CounterText::Energy => {
                 text.sections[0].value = format!("Énergie: {}", resource_counter.energy);
             },
+            CounterText::Science => {
+                text.sections[0].value = format!("Science: {}", resource_counter.science);
+            },
         }
     }
 }
@@ -602,6 +660,7 @@ fn update_robot_visuals(mut query: Query<(&Robot, &mut Sprite), Changed<Robot>>)
             match resource_type {
                 ResourceType::Mineral => sprite.color = Color::rgba(1.0, 0.0, 0.0, 0.8), // Rouge pour minéraux
                 ResourceType::Energy => sprite.color = Color::rgba(1.0, 1.0, 0.0, 0.8),  // Jaune pour énergie
+                ResourceType::Science => sprite.color = Color::rgba(0.0, 0.0, 1.0, 0.8), // Bleu pour science
             }
         } else {
             // Robot sans ressource: couleur normale
@@ -941,6 +1000,7 @@ fn direct_resource_collection(
     resources: Query<(Entity, &ResourcePoint, &Transform)>,
     mut shared_knowledge: ResMut<SharedKnowledge>,
     station_pos: Res<StationPosition>,
+    mut world_map: ResMut<WorldMap>, // Ajout pour pouvoir modifier la carte du monde
 ) {
     let offset_x = WIDTH as f32 * TILE_SIZE / 2.0;
     let offset_y = HEIGHT as f32 * TILE_SIZE / 2.0;
@@ -955,7 +1015,7 @@ fn direct_resource_collection(
         if let Some(resource_type) = robot.carrying_resource {
             if (rx as isize - station_pos.x as isize).abs() < 5 && 
                (ry as isize - station_pos.y as isize).abs() < 5 {
-                // Incrémente le compteur
+                // Incrémente le compteur selon le type de ressource
                 match resource_type {
                     ResourceType::Mineral => {
                         resource_counter.minerals += 1;
@@ -965,35 +1025,53 @@ fn direct_resource_collection(
                         resource_counter.energy += 1;
                         println!("Énergie: {}", resource_counter.energy);
                     },
+                    ResourceType::Science => {
+                        resource_counter.science += 1;
+                        println!("Découvertes scientifiques: {}", resource_counter.science);
+                    },
                 }
                 
                 // Le robot ne porte plus de ressource
                 robot.carrying_resource = None;
             }
         } 
-        // Si le robot n'a pas de ressource, vérifie s'il peut en collecter une
+        // Si le robot n'a pas de ressource
         else {
-            for (entity, resource, resource_transform) in resources.iter() {
-                // Calculez la position de la ressource
-                let resx = ((resource_transform.translation.x + offset_x) / TILE_SIZE).round() as usize;
-                let resy = ((resource_transform.translation.y + offset_y) / TILE_SIZE).round() as usize;
+            // Vérifier si le robot est sur une zone scientifique
+            // Vérifier si le robot est sur une zone scientifique
+            if rx < WIDTH && ry < HEIGHT && world_map.tiles[ry][rx] == TileType::Science {
+                // Le robot collecte l'information scientifique
+                robot.carrying_resource = Some(ResourceType::Science);
                 
-                // Calcule la distance entre le robot et la ressource
-                let distance = ((rx as f32 - resx as f32).powi(2) + (ry as f32 - resy as f32).powi(2)).sqrt();
+                // Convertir toute la zone scientifique connectée en zone passable
+                convert_science_zone(rx, ry, &mut world_map);
                 
-                // Si le robot est assez proche (rayon de 10 unités)
-                if distance < 10.0 {
-                    // Le robot collecte la ressource
-                    robot.carrying_resource = Some(resource.resource_type);
+                println!("Robot collecte une découverte scientifique en ({}, {})", rx, ry);
+            }
+            // Sinon, vérifier les ressources comme avant
+            else {
+                for (entity, resource, resource_transform) in resources.iter() {
+                    // Calculez la position de la ressource
+                    let resx = ((resource_transform.translation.x + offset_x) / TILE_SIZE).round() as usize;
+                    let resy = ((resource_transform.translation.y + offset_y) / TILE_SIZE).round() as usize;
                     
-                    // Supprime la ressource du monde
-                    commands.entity(entity).despawn();
+                    // Calcule la distance entre le robot et la ressource
+                    let distance = ((rx as f32 - resx as f32).powi(2) + (ry as f32 - resy as f32).powi(2)).sqrt();
                     
-                    // Supprime la ressource de la connaissance partagée
-                    shared_knowledge.known_resources.retain(|&(x, y, _)| x != resx || y != resy);
-                    
-                    println!("Robot collecte une ressource de type {:?}", resource.resource_type);
-                    break; // Sortir de la boucle après avoir collecté une ressource
+                    // Si le robot est assez proche (rayon de 10 unités)
+                    if distance < 10.0 {
+                        // Le robot collecte la ressource
+                        robot.carrying_resource = Some(resource.resource_type);
+                        
+                        // Supprime la ressource du monde
+                        commands.entity(entity).despawn();
+                        
+                        // Supprime la ressource de la connaissance partagée
+                        shared_knowledge.known_resources.retain(|&(x, y, _)| x != resx || y != resy);
+                        
+                        println!("Robot collecte une ressource de type {:?}", resource.resource_type);
+                        break; // Sortir de la boucle après avoir collecté une ressource
+                    }
                 }
             }
         }
@@ -1022,7 +1100,8 @@ fn robot_observation_system(
         let mut resources_to_remove = Vec::new();
         for (i, &(res_x, res_y, _)) in map_memory.known_resources.iter().enumerate() {
             if world_map.tiles[res_y][res_x] != TileType::Mineral && 
-               world_map.tiles[res_y][res_x] != TileType::Energy {
+               world_map.tiles[res_y][res_x] != TileType::Energy &&
+               world_map.tiles[res_y][res_x] != TileType::Science {
                 resources_to_remove.push(i);
             }
         }
@@ -1051,6 +1130,12 @@ fn robot_observation_system(
                         
                         if !map_memory.known_resources.iter().any(|(x, y, _)| *x == obs_x as usize && *y == obs_y as usize) {
                             map_memory.known_resources.push((obs_x as usize, obs_y as usize, resource_type));
+                        }
+                    }
+                    // Ajout pour les zones scientifiques
+                    else if tile_type == TileType::Science {
+                        if !map_memory.known_resources.iter().any(|(x, y, _)| *x == obs_x as usize && *y == obs_y as usize) {
+                            map_memory.known_resources.push((obs_x as usize, obs_y as usize, ResourceType::Science));
                         }
                     }
                 }
