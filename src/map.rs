@@ -1,6 +1,7 @@
 use noise::{NoiseFn, Perlin};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
+use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -26,6 +27,12 @@ impl MapDiff {
 
     pub fn merge(&mut self, other: MapDiff) {
         self.0.extend(other.0);
+    }
+
+    pub fn apply_to_known_map(&self, known_map: &mut HashMap<(usize, usize), Tile>) {
+        for &((r, c), _before, after) in &self.0 {
+            known_map.insert((r, c), after);
+        }
     }
 }
 

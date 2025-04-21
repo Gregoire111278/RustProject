@@ -146,6 +146,12 @@ impl App {
                 } => {
                     self.robots.push(Robot::new(id, start_pos, modules));
                 }
+                StationCmd::Snapshot { id, version, diff } => {
+                    self.master_version = version;
+                    if let Some(robot) = self.robots.iter_mut().find(|r| r.id == id as usize) {
+                        diff.apply_to_known_map(&mut robot.known_map);
+                    }
+                }
                 StationCmd::Shutdown => return true,
                 StationCmd::Version(v) => {
                     self.master_version = v;

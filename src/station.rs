@@ -20,6 +20,11 @@ pub enum StationCmd {
         modules: Vec<RobotModule>,
         start_pos: (usize, usize),
     },
+    Snapshot {
+        id: u32,
+        version: u64,
+        diff: MapDiff,
+    },
     Shutdown,
     Version(u64),
 }
@@ -71,6 +76,17 @@ impl Station {
                         RobotModule::Sensor,
                     ],
                     start_pos: (0, 0),
+                });
+                let full_diff = MapDiff(
+                    self.master_map
+                        .iter()
+                        .map(|(&(r, c), &tile)| ((r, c), None, tile))
+                        .collect(),
+                );
+                let _ = self.tx_cmd.send(StationCmd::Snapshot {
+                    id : id as u32,
+                    version: self.map_version,
+                    diff: full_diff,
                 });
             }
         }
