@@ -1,7 +1,9 @@
-use crate::map::MapDiff;
 use crate::map::Tile;
+use crate::map::{Map, MapDiff};
 use crate::station::RobotReport;
 use std::collections::{HashSet, VecDeque};
+use std::sync::mpsc::{Receiver, Sender};
+use std::sync::{Arc, RwLock};
 
 /// nbr of resources a robot can carry
 pub const PAYLOAD_LIMIT: u32 = 10;
@@ -20,7 +22,116 @@ pub enum RobotModule {
     Sensor,
 }
 
-#[derive(Debug)]
+pub enum RobotCmd {
+    Tick {
+        tick_count: u64,
+        occupied_positions: HashSet<(usize, usize)>,
+    },
+    Snapshot {
+        version: u64,
+        diff: MapDiff,
+    },
+    ReportPosition {
+        respond_to: Sender<(usize, (usize, usize))>,
+    },
+    Shutdown,
+}
+
+pub struct RobotActor {
+    robot: Robot,
+    map: Arc<RwLock<Map>>,
+    rx: Receiver<RobotCmd>,
+    tx_report: Sender<RobotReport>,
+}
+
+impl RobotActor {
+    pub fn new(
+        robot: Robot,
+        map: Arc<RwLock<Map>>,
+        rx: Receiver<RobotCmd>,
+        tx_report: Sender<RobotReport>,
+    ) -> Self {
+        Self {
+            robot,
+            map,
+            rx,
+            tx_report,
+        }
+    }
+
+    pub fn run(mut self) {
+        while let Ok(cmd) = self.rx.recv() {
+            match cmd {
+                RobotCmd::Tick {
+                    tick_count,
+                    occupied_positions,
+                } => {
+                    self.process_tick(tick_count, &occupied_positions);
+                }
+                RobotCmd::Snapshot { version: _, diff } => {
+                    diff.apply_to_known_map(&mut self.robot.known_map);
+                }
+                RobotCmd::ReportPosition { respond_to } => {
+                    let _ = respond_to.send((self.robot.id, self.robot.position));
+                }
+                RobotCmd::Shutdown => break,
+            }
+        }
+    }
+
+    fn process_tick(&mut self, tick_count: u64, occupied: &HashSet<(usize, usize)>) {
+        let map = self.map.read().unwrap();
+
+        if self.robot.modules.contains(&RobotModule::Scanner) {
+            self.robot.scan_surroundings(&map);
+        }
+
+        if self.robot.modules.contains(&RobotModule::Collector) {
+            let (row, col) = self.robot.position;
+            if row < map.grid.len() && col < map.cols {
+                let tile = map.grid[row][col];
+                if matches!(tile, Tile::Energy | Tile::Mineral) {
+                    self.robot
+                        .dirty_tiles
+                        .push(((row, col), Some(tile), Tile::Empty));
+
+                    if tile == Tile::Energy {
+                        self.robot.energy_collected += 1;
+                    } else if tile == Tile::Mineral {
+                        self.robot.mineral_collected += 1;
+                    }
+                }
+            }
+        }
+
+        if self.robot.state == RobotState::Exploring
+            && self.robot.energy_collected + self.robot.mineral_collected >= PAYLOAD_LIMIT
+        {
+            self.robot.state = RobotState::Returning;
+        }
+
+        match self.robot.state {
+            RobotState::Exploring => {
+                if self.robot.modules.contains(&RobotModule::Explorer) {
+                    self.robot.smart_move(&map, occupied);
+                }
+            }
+            RobotState::Returning => {
+                self.robot.step_towards((0, 0), &map, occupied);
+            }
+        }
+
+        if self.robot.state == RobotState::Returning && self.robot.position == (0, 0) {
+            let report = self.robot.make_report(tick_count);
+            let _ = self.tx_report.send(report);
+            self.robot.state = RobotState::Exploring;
+        }
+
+        drop(map);
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct Robot {
     pub known_map: std::collections::HashMap<(usize, usize), Tile>,
     pub id: usize,

@@ -29,6 +29,10 @@ pub enum StationCmd {
     },
     Shutdown,
     Version(u64),
+    ResourceUpdate {
+        energy: u32,
+        mineral: u32,
+    },
 }
 
 pub struct Station {
@@ -69,6 +73,13 @@ impl Station {
                 let id = self.next_robot_id;
                 self.next_robot_id += 1;
 
+                let start_pos = match id % 4 {
+                    0 => (0, 0),
+                    1 => (1, 1),
+                    2 => (2, 0),
+                    _ => (0, 2),
+                };
+
                 let _ = self.tx_cmd.send(StationCmd::Spawn {
                     id,
                     modules: vec![
@@ -77,8 +88,9 @@ impl Station {
                         RobotModule::Scanner,
                         RobotModule::Sensor,
                     ],
-                    start_pos: (0, 0),
+                    start_pos,
                 });
+
                 let full_diff = MapDiff(
                     self.master_map
                         .iter()
@@ -86,7 +98,7 @@ impl Station {
                         .collect(),
                 );
                 let _ = self.tx_cmd.send(StationCmd::Snapshot {
-                    id : id as u32,
+                    id: id as u32,
                     version: self.map_version,
                     diff: full_diff,
                 });
@@ -114,6 +126,9 @@ impl Station {
         }
 
         let mut cell_updates: HashMap<(usize, usize), (usize, Tile)> = HashMap::new();
+        let mut total_energy = 0;
+        let mut total_mineral = 0;
+
         for (arrival_idx, rep) in same_tick.iter().enumerate() {
             for &((row, col), _before, after) in &rep.map_diff.0 {
                 let entry = cell_updates
@@ -125,10 +140,25 @@ impl Station {
             }
             self.energy_stock += rep.energy;
             self.mineral_stock += rep.mineral;
+            total_energy += rep.energy;
+            total_mineral += rep.mineral;
+        }
+
+        if total_energy > 0 || total_mineral > 0 {
+            let _ = self.tx_cmd.send(StationCmd::ResourceUpdate {
+                energy: total_energy,
+                mineral: total_mineral,
+            });
         }
 
         for ((row, col), &(_, tile_after)) in &cell_updates {
             self.master_map.insert((*row, *col), tile_after);
+
+            let _ = self.tx_cmd.send(StationCmd::Snapshot {
+                id: 0,
+                version: self.map_version,
+                diff: MapDiff(vec![((*row, *col), None, tile_after)]),
+            });
         }
 
         let _ = self.tx_cmd.send(StationCmd::Log(format!(

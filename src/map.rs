@@ -37,6 +37,7 @@ impl MapDiff {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Map {
     pub grid: Vec<Vec<Tile>>,
     pub cols: usize,

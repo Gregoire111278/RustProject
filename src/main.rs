@@ -1,4 +1,5 @@
 mod app;
+mod coordinator;
 mod map;
 mod robot;
 mod station;
@@ -28,6 +29,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let stdout = io::stdout();
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
+    terminal.clear()?;
 
     let mut app = app::App::new(tx_report.clone(), rx_cmd);
 
