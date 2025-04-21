@@ -10,6 +10,9 @@
 - Nahel Kini
 - Roman Sabechkine
 
+![image](https://github.com/user-attachments/assets/1fd8a53f-a4b7-4eca-af63-29b1cbc14b05)
+
+
 This Rust project demonstrates two different UI approaches for building a robot simulation:
 
 1. **Terminal-based UI with Ratatui** (default, in `main` branch)
