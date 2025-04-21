@@ -4,7 +4,7 @@ use rand::{Rng, SeedableRng};
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Tile {
     Empty,
     Obstacle,
@@ -13,9 +13,10 @@ pub enum Tile {
     Science,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MapDiff(pub Vec<((usize, usize), Option<Tile>, Tile)>);
 
+#[allow(dead_code)]
 impl MapDiff {
     pub fn apply(&self, map: &mut Map) {
         for &((r, c), _before, after) in &self.0 {

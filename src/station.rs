@@ -5,6 +5,7 @@ use std::sync::mpsc::{Receiver, Sender};
 
 #[derive(Debug, Clone)]
 pub struct RobotReport {
+    #[allow(dead_code)]
     pub robot_id: usize,
     pub tick: u64,
     pub map_diff: MapDiff,
@@ -13,6 +14,7 @@ pub struct RobotReport {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub enum StationCmd {
     Log(String),
     Spawn {
