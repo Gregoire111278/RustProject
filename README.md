@@ -1,8 +1,7 @@
 ### Projet : Essaim de Robots pour l'Exploration et l'Étude Astrobiologique (EREEA)
 
 # NEBULINK
-![image](https://github.com/user-attachments/assets/468ef0f8-15d8-41f3-b010-711738c24782)
-
+<img src="https://github.com/user-attachments/assets/468ef0f8-15d8-41f3-b010-711738c24782" alt="NEBULINK Logo" width="150"/>
 
 ## Group members:
 
