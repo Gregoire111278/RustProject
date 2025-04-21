@@ -1,10 +1,11 @@
-// ##################################### UNIT TESTS #############################################
-use RustProject::map::Tile;
-use RustProject::map::Map;
-use RustProject::robot::RobotModule;
-use RustProject::robot::Robot;
-use RustProject::robot::RobotState;
+use rust_project::map::Tile;
+use rust_project::map::Map;
+use rust_project::robot::RobotModule;
+use rust_project::robot::Robot;
+use rust_project::robot::RobotState;
+use rust_project::map::MapDiff;
 use std::collections::HashSet;
+
 
 
 #[cfg(test)]
@@ -70,7 +71,10 @@ mod tests {
 
         assert_eq!(robot.dirty_tiles.len(), 9);
         for (pos, expected_tile) in expected {
-            assert!(robot.dirty_tiles.contains(&(pos, expected_tile)), "Missing dirty tile at {:?}", pos);
+            assert!(
+                robot.dirty_tiles.contains(&(pos, None, expected_tile)),
+                "Missing dirty tile at {:?}", pos
+            );
         }
     }
 
@@ -93,7 +97,7 @@ mod tests {
 
         for (pos, tile) in expected {
             assert_eq!(robot.known_map.get(&pos), Some(&tile));
-            assert!(robot.dirty_tiles.contains(&(pos, tile)));
+            assert!(robot.dirty_tiles.contains(&(pos, None, tile)));
         }
     }
 
@@ -116,7 +120,7 @@ mod tests {
 
         for (pos, tile) in expected {
             assert_eq!(robot.known_map.get(&pos), Some(&tile));
-            assert!(robot.dirty_tiles.contains(&(pos, tile)));
+            assert!(robot.dirty_tiles.contains(&(pos, None, tile)));
         }
     }
 
@@ -244,20 +248,20 @@ mod tests {
         robot.energy_collected = 7;
         robot.mineral_collected = 3;
         robot.dirty_tiles = vec![
-            ((2, 2), Tile::Energy),
-            ((3, 3), Tile::Mineral),
+            ((2, 2), None, Tile::Energy),
+            ((3, 3), None, Tile::Mineral),
         ];
-        let report = robot.make_report();
+        let report = robot.make_report(100);
 
         assert_eq!(report.robot_id, 42);
         assert_eq!(report.energy, 7);
         assert_eq!(report.mineral, 3);
         assert_eq!(
             report.map_diff,
-            vec![
-                ((2, 2), Tile::Energy),
-                ((3, 3), Tile::Mineral),
-            ]
+            MapDiff(vec![
+                ((2, 2), None, Tile::Energy),
+                ((3, 3), None, Tile::Mineral),
+            ])
         );
         assert_eq!(robot.energy_collected, 0);
         assert_eq!(robot.mineral_collected, 0);
@@ -268,12 +272,12 @@ mod tests {
     fn test_make_report_with_empty_fields() {
         let mut robot = Robot::new(5, (0, 0), vec![]);
         
-        let report = robot.make_report();
+        let report = robot.make_report(100);
 
         assert_eq!(report.robot_id, 5);
         assert_eq!(report.energy, 0);
         assert_eq!(report.mineral, 0);
-        assert!(report.map_diff.is_empty());
+        assert!(report.map_diff.0.is_empty());
     }
 
 

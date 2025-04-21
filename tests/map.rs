@@ -1,9 +1,7 @@
-use RustProject::map::Tile;
-use RustProject::map::Map;
+use rust_project::map::Tile;
+use rust_project::map::Map;
 
 
-
-// ##################################### UNIT TESTS #############################################
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -21,7 +21,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let (tx_cmd, rx_cmd) = mpsc::channel();
 
     thread::spawn(move || {
-        let station = station::Station::new(rx_report, tx_cmd);
+        let mut station = station::Station::new(rx_report, tx_cmd);
         station.run();
     });
 

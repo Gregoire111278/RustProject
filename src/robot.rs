@@ -1,3 +1,4 @@
+use crate::map::MapDiff;
 use crate::map::Tile;
 use crate::station::RobotReport;
 use std::collections::{HashSet, VecDeque};
@@ -29,7 +30,7 @@ pub struct Robot {
     pub energy_collected: u32,
     pub mineral_collected: u32,
     pub state: RobotState,
-    pub dirty_tiles: Vec<((usize, usize), Tile)>,
+    pub dirty_tiles: Vec<((usize, usize), Option<Tile>, Tile)>,
 }
 
 impl Robot {
@@ -56,7 +57,7 @@ impl Robot {
                 if r < map.grid.len() && c < map.cols {
                     let tile = map.grid[r][c];
                     self.known_map.insert((r, c), tile);
-                    self.dirty_tiles.push(((r, c), tile));
+                    self.dirty_tiles.push(((r, c), None, tile));
                 }
             }
         }
@@ -165,10 +166,12 @@ impl Robot {
         nearby
     }
 
-    pub fn make_report(&mut self) -> RobotReport {
+    pub fn make_report(&mut self, tick: u64) -> RobotReport {
+        let diff_vec = std::mem::take(&mut self.dirty_tiles);
         let report = RobotReport {
             robot_id: self.id,
-            map_diff: std::mem::take(&mut self.dirty_tiles),
+            tick,
+            map_diff: MapDiff(diff_vec),
             energy: std::mem::take(&mut self.energy_collected),
             mineral: std::mem::take(&mut self.mineral_collected),
         };
