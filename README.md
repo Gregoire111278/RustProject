@@ -3,7 +3,7 @@
 # NEBULINK
 <img src="https://github.com/user-attachments/assets/468ef0f8-15d8-41f3-b010-711738c24782" alt="NEBULINK Logo" width="150"/>
 
-## Group members:
+## Made by:
 
 - Gregoire Lequippe
 - Ali Loudagh
