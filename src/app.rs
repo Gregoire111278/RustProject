@@ -17,6 +17,7 @@ pub struct App {
     pub logs: VecDeque<String>,
     pub robots_scroll: u16,
     pub logs_scroll: u16,
+    pub master_version: u64,
 }
 
 impl App {
@@ -58,6 +59,7 @@ impl App {
             logs: VecDeque::new(),
             robots_scroll: 0,
             logs_scroll: 0,
+            master_version: 0,
         }
     }
 
@@ -145,6 +147,9 @@ impl App {
                     self.robots.push(Robot::new(id, start_pos, modules));
                 }
                 StationCmd::Shutdown => return true,
+                StationCmd::Version(v) => {
+                    self.master_version = v;
+                }
             }
         }
 

@@ -206,11 +206,12 @@ pub fn render(f: &mut Frame, app: &App) {
 
     let status = Paragraph::new(Line::from(vec![Span::styled(
         format!(
-            "Tick: {} | Robots: {} | Energy: {} | Mineral: {}",
+            "Tick: {} | Robots: {} | Energy: {} | Mineral: {} | Master ver: {}",
             app.tick_count,
             app.robots.len(),
             app.collected_energy,
-            app.collected_mineral
+            app.collected_mineral,
+            app.master_version,
         ),
         Style::default().fg(Color::White),
     )]))
