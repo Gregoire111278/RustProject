@@ -3,6 +3,8 @@
 # NEBULINK
 <img src="https://github.com/user-attachments/assets/468ef0f8-15d8-41f3-b010-711738c24782" alt="NEBULINK Logo" width="150"/>
 
+NEBULINK est une plateforme de simulation d’un essaim de robots autonomes destinés à l’exploration de terrains extraterrestres. Ces robots coopèrent pour analyser la géologie, collecter des échantillons et identifier des zones d’intérêt scientifique, tout en partageant leurs données à leur retour à la station. Le projet met l’accent sur la performance, la programmation concurrente, et l’intelligence collective.
+
 ## Made by:
 
 - Gregoire Lequippe
