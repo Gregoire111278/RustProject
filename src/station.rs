@@ -21,6 +21,7 @@ pub enum StationCmd {
         start_pos: (usize, usize),
     },
     Shutdown,
+    Version(u64),
 }
 
 pub struct Station {
@@ -32,6 +33,7 @@ pub struct Station {
     energy_stock: u32,
     mineral_stock: u32,
     next_robot_id: usize,
+    map_version: u64,
 }
 
 impl Station {
@@ -44,6 +46,7 @@ impl Station {
             energy_stock: 0,
             mineral_stock: 0,
             next_robot_id: 3,
+            map_version: 0,
         }
     }
 
@@ -117,5 +120,8 @@ impl Station {
             self.energy_stock,
             self.mineral_stock
         )));
+
+        self.map_version += 1;
+        let _ = self.tx_cmd.send(StationCmd::Version(self.map_version));
     }
 }
