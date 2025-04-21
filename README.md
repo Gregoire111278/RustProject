@@ -61,3 +61,6 @@ cargo test
 - `bevy-version`: Graphical simulation (Bevy)
 
 ---
+
+More details in:
+https://github.com/Gregoire111278/RustProject/wiki
