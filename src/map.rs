@@ -80,6 +80,3 @@ impl Map {
         Self::generate(rows, cols, seed)
     }
 }
-
-
-

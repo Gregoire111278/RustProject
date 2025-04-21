@@ -3,7 +3,6 @@ use crate::robot::RobotModule;
 use std::collections::HashMap;
 use std::sync::mpsc::{Receiver, Sender};
 
-
 #[derive(Debug, Clone)]
 pub struct RobotReport {
     #[allow(dead_code)]
