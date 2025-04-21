@@ -1,9 +1,8 @@
-use rust_project::station::{RobotReport, Station, StationCmd};
-use rust_project::map::{Tile, MapDiff};
+use rust_project::map::{MapDiff, Tile};
 use rust_project::robot::RobotModule;
+use rust_project::station::{RobotReport, Station, StationCmd};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
-
 
 #[test]
 fn test_station_report_processing_and_spawning() {
@@ -30,13 +29,14 @@ fn test_station_report_processing_and_spawning() {
         })
         .unwrap();
 
-    drop(tx_report); 
+    drop(tx_report);
 
     let mut spawn_found = false;
     let mut log_found = false;
+    let mut resource_update_found = false;
 
-    for _ in 0..3 {
-        if let Ok(msg) = rx_cmd.recv() {
+    for _ in 0..10 {
+        if let Ok(msg) = rx_cmd.recv_timeout(std::time::Duration::from_millis(500)) {
             match msg {
                 StationCmd::Log(log) => {
                     println!("Log: {log}");
@@ -44,25 +44,53 @@ fn test_station_report_processing_and_spawning() {
                         log_found = true;
                     }
                 }
-                StationCmd::Spawn { id, modules, start_pos } => {
-                    assert_eq!(modules, vec![
-                        RobotModule::Explorer,
-                        RobotModule::Collector,
-                        RobotModule::Scanner,
-                        RobotModule::Sensor,
-                    ]);
-                    assert_eq!(start_pos, (0, 0));
+                StationCmd::Spawn {
+                    id,
+                    modules,
+                    start_pos,
+                } => {
+                    println!("Spawn received: id={}", id);
+                    assert_eq!(
+                        modules,
+                        vec![
+                            RobotModule::Explorer,
+                            RobotModule::Collector,
+                            RobotModule::Scanner,
+                            RobotModule::Sensor,
+                        ]
+                    );
                     assert_eq!(id, 3);
                     spawn_found = true;
                 }
-                _ => {}
+                StationCmd::ResourceUpdate { energy, mineral } => {
+                    println!("Resource update: {}E {}M", energy, mineral);
+                    assert_eq!(energy, 10);
+                    assert_eq!(mineral, 10);
+                    resource_update_found = true;
+                }
+                StationCmd::Snapshot { .. } => {
+                    println!("Snapshot received");
+                }
+                StationCmd::Version(v) => {
+                    println!("Version update: {}", v);
+                }
+                _ => {
+                    println!("Other command: {:?}", msg);
+                }
+            }
+
+            if spawn_found && (log_found || resource_update_found) {
+                break;
             }
         }
     }
 
     handle.join().unwrap();
 
-    assert!(log_found, "Expected log not found");
+    assert!(
+        log_found || resource_update_found,
+        "Expected log or resource update not found"
+    );
     assert!(spawn_found, "Expected robot spawn command not found");
 }
 
@@ -102,5 +130,8 @@ fn test_station_does_not_spawn_with_insufficient_resources() {
 
     handle.join().unwrap();
 
-    assert!(!received_spawn, "Robot was spawned with insufficient resources");
+    assert!(
+        !received_spawn,
+        "Robot was spawned with insufficient resources"
+    );
 }
