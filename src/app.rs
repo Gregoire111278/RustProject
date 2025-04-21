@@ -124,7 +124,7 @@ impl App {
             }
 
             if robot.state == RobotState::Returning && Self::at_station(robot.position) {
-                let _ = self.tx_report.send(robot.make_report());
+                let _ = self.tx_report.send(robot.make_report(self.tick_count));
                 robot.state = RobotState::Exploring;
             }
         }
