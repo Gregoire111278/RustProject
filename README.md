@@ -65,7 +65,7 @@ cargo test
 ## 📂 Final Branches
 
 - `main`: Terminal-based simulation (Ratatui)
-- `nahel`: Graphical simulation (Bevy)
+- `bevy-version`: Graphical simulation (Bevy)
 
 ---
 
